@@ -1,6 +1,7 @@
 package coreinfo
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -27,10 +28,24 @@ func checkGDBAvailability() error {
 	return nil
 }
 
-// validateCoreFiles ensures that the provided arguments contain valid core files or directories.
+// isCoreFile determines if a file is a core dump using the `file` command.
+func isCoreFile(filePath string) (bool, error) {
+	cmd := exec.Command("file", filePath)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	if err := cmd.Run(); err != nil {
+		return false, fmt.Errorf("failed to run 'file' command: %w", err)
+	}
+
+	output := out.String()
+	return strings.Contains(output, "core file"), nil
+}
+
+// validateCoreFiles validates the input paths to determine if they are core files or directories containing core files.
 func validateCoreFiles(args []string) ([]string, error) {
 	if len(args) == 0 {
-		return nil, errors.New("no core files or directories provided")
+		return nil, fmt.Errorf("no core files or directories provided")
 	}
 
 	var coreFiles []string
@@ -41,25 +56,28 @@ func validateCoreFiles(args []string) ([]string, error) {
 		}
 
 		if info.IsDir() {
-			// Search for core files in the directory
-			files, err := filepath.Glob(filepath.Join(arg, "core*"))
+			// Search for files in the directory
+			files, err := filepath.Glob(filepath.Join(arg, "*"))
 			if err != nil {
 				return nil, fmt.Errorf("error scanning directory '%s': %v", arg, err)
 			}
-			if len(files) == 0 {
-				return nil, fmt.Errorf("no core files found in directory '%s'", arg)
+			for _, file := range files {
+				if valid, err := isCoreFile(file); err == nil && valid {
+					coreFiles = append(coreFiles, file)
+				}
 			}
-			coreFiles = append(coreFiles, files...)
-		} else if filepath.Base(arg) == "core" || strings.HasPrefix(filepath.Base(arg), "core.") {
-			// Single core file
-			coreFiles = append(coreFiles, arg)
 		} else {
-			return nil, fmt.Errorf("invalid core file or directory: '%s'", arg)
+			// Validate single file
+			if valid, err := isCoreFile(arg); err == nil && valid {
+				coreFiles = append(coreFiles, arg)
+			} else {
+				return nil, fmt.Errorf("invalid core file: '%s'", arg)
+			}
 		}
 	}
 
 	if len(coreFiles) == 0 {
-		return nil, errors.New("no valid core files provided")
+		return nil, fmt.Errorf("no valid core files provided")
 	}
 	return coreFiles, nil
 }
