@@ -2,7 +2,6 @@ package coreinfo
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
