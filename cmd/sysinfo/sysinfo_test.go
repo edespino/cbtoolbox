@@ -19,6 +19,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -258,7 +259,6 @@ func TestValidateFormat(t *testing.T) {
 
 // TestRunSysInfoValidFormats validates output generation in both JSON and YAML formats.
 // Creates a mock environment with required executables and verifies proper output formatting.
-
 func TestRunSysInfoValidFormats(t *testing.T) {
 	originalGPHOME := os.Getenv("GPHOME")
 	defer os.Setenv("GPHOME", originalGPHOME)
@@ -304,6 +304,12 @@ esac`
 		t.Fatalf("Failed to write mock osReleasePath file: %v", err)
 	}
 
+	// Determine the expected OS value dynamically
+	expectedOS := runtime.GOOS
+
+	// Dynamically determine the expected architecture
+	expectedArchitecture := runtime.GOARCH
+
 	// Test both JSON and YAML output formats
 	for _, format := range []string{"json", "yaml"} {
 		formatFlag = format
@@ -317,12 +323,24 @@ esac`
 		// Log actual output for debugging
 		t.Logf("Captured output for format %s:\n%s", format, output)
 
-		// Verify format-specific content
-		if format == "json" && !strings.Contains(output, `"os": "darwin"`) {
-			t.Errorf("Expected JSON output to contain OS information")
+		// Validate JSON
+		if format == "json" {
+			if !strings.Contains(output, `"os": "`+expectedOS+`"`) {
+				t.Errorf("Expected JSON output to contain \"os\": \"%s\", got:\n%s", expectedOS, output)
+			}
+			if !strings.Contains(output, `"architecture": "`+expectedArchitecture+`"`) {
+				t.Errorf("Expected JSON output to contain \"architecture\": \"%s\", got:\n%s", expectedArchitecture, output)
+			}
 		}
-		if format == "yaml" && !strings.Contains(output, "os: darwin") {
-			t.Errorf("Expected YAML output to contain OS information")
+
+		// Validate YAML
+		if format == "yaml" {
+			if !strings.Contains(output, "os: "+expectedOS) {
+				t.Errorf("Expected YAML output to contain os: %s, got:\n%s", expectedOS, output)
+			}
+			if !strings.Contains(output, "architecture: "+expectedArchitecture) {
+				t.Errorf("Expected YAML output to contain architecture: %s, got:\n%s", expectedArchitecture, output)
+			}
 		}
 
 		if !strings.Contains(output, tmpDir) {
