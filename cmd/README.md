@@ -1,3 +1,4 @@
+
 # Command Package
 
 The `cmd` package implements the core command-line interface for the Apache Cloudberry Toolbox. It serves as the central point for registering and managing all subcommands available in the toolbox.
@@ -16,7 +17,8 @@ This package provides:
 cmd/
 ├── root.go           # Root command implementation
 ├── root_test.go      # Root command tests
-└── sysinfo/         # Sysinfo subcommand package
+├── sysinfo/          # Sysinfo subcommand package
+└── coreinfo/         # Coreinfo subcommand package
 ```
 
 ## Root Command
@@ -34,15 +36,20 @@ cbtoolbox [command] [flags]
 
 ### Available Commands
 
-1. sysinfo
+1. **sysinfo**
    - Displays system and database environment information
    - See [sysinfo documentation](./sysinfo/README.md) for details
 
-2. help
+2. **coreinfo**
+   - Analyzes core dump files for diagnostic purposes
+   - Executes GDB commands to provide basic or detailed analysis
+   - See [coreinfo documentation](./coreinfo/README.md) for details
+
+3. **help**
    - Displays help about any command
    - Usage: `cbtoolbox help [command]`
 
-3. completion
+4. **completion**
    - Generates shell completion scripts
    - Usage: `cbtoolbox completion [bash|zsh|fish|powershell]`
 
@@ -59,6 +66,7 @@ New commands are registered in the root command's initialization:
 ```go
 func init() {
     rootCmd.AddCommand(sysinfo.Cmd)
+    rootCmd.AddCommand(coreinfo.CoreinfoCmd)
 }
 ```
 

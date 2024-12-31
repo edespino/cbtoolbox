@@ -99,6 +99,11 @@ func TestGetKernelVersionError(t *testing.T) {
 // TestGetOSVersion validates operating system version retrieval.
 // It verifies successful reading of /etc/os-release and proper content extraction.
 func TestGetOSVersion(t *testing.T) {
+	// Mock for non-Linux systems
+	if _, err := os.Stat("/etc/os-release"); os.IsNotExist(err) {
+		t.Skip("Skipping test: /etc/os-release does not exist on this system")
+	}
+
 	osVersion, err := getOSVersion()
 	if err != nil {
 		t.Errorf("Unexpected error retrieving OS version: %v", err)
@@ -120,6 +125,11 @@ func TestGetCPUCount(t *testing.T) {
 // TestGetReadableMemoryStats validates memory statistics retrieval and formatting.
 // It tests both successful retrieval and proper formatting of memory values.
 func TestGetReadableMemoryStats(t *testing.T) {
+	// Mock for non-Linux systems
+	if _, err := os.Stat("/proc/meminfo"); os.IsNotExist(err) {
+		t.Skip("Skipping test: /proc/meminfo does not exist on this system")
+	}
+
 	originalProcMeminfo := procMeminfo
 	defer func() { procMeminfo = originalProcMeminfo }()
 
@@ -288,8 +298,7 @@ func TestRunSysInfoValidFormats(t *testing.T) {
 	// Test both JSON and YAML output formats
 	for _, format := range []string{"json", "yaml"} {
 		formatFlag = format
-		var output string
-		output = captureOutput(func() {
+		output := captureOutput(func() {
 			err := RunSysInfo(nil, nil)
 			if err != nil {
 				t.Errorf("Unexpected error for format %s: %v", format, err)

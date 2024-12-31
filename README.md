@@ -6,6 +6,7 @@ The Apache Cloudberry Toolbox (`cbtoolbox`) is a command-line utility that provi
 
 This toolbox provides a collection of utilities to:
 - Gather system and database environment information
+- Analyze core dump files for diagnostics
 - Support database administration tasks
 - Monitor database performance
 - Facilitate cluster management
@@ -14,7 +15,7 @@ This toolbox provides a collection of utilities to:
 
 ### Prerequisites
 - Go 1.19 or later
-- Access to a Apache Cloudberry installation
+- Access to an Apache Cloudberry installation
 - Proper GPHOME environment setup
 
 ### Building from Source
@@ -38,9 +39,14 @@ cbtoolbox [command] [flags]
 
 ### Available Commands
 
-1. sysinfo
+1. **sysinfo**
    - Displays system and database environment information
    - See [sysinfo documentation](./cmd/sysinfo/README.md) for details
+
+2. **coreinfo**
+   - Analyzes core dump files for diagnostic purposes
+   - Executes basic or detailed GDB commands based on debug symbol availability
+   - See [coreinfo documentation](./cmd/coreinfo/README.md) for details
 
 ### Global Flags
 - `--help, -h`: Display help information
@@ -59,16 +65,18 @@ The toolbox requires specific environment setup:
 Detailed documentation for each command:
 - [Command Package](./cmd/README.md)
   - [Sysinfo Command](./cmd/sysinfo/README.md)
+  - [Coreinfo Command](./cmd/coreinfo/README.md)
 
 ## Project Structure
 
 ```
 cbtoolbox/
 ├── cmd/                  # Command implementations
-│   ├── root.go          # Root command
-│   └── sysinfo/         # Sysinfo command
-├── main.go              # Application entry point
-└── README.md           # Project documentation
+│   ├── root.go           # Root command
+│   ├── sysinfo/          # Sysinfo command
+│   └── coreinfo/         # Coreinfo command
+├── main.go               # Application entry point
+└── README.md             # Project documentation
 ```
 
 ## Development
@@ -130,4 +138,3 @@ Licensed under the Apache License, Version 2.0. See LICENSE for details.
 
 For support and issues:
 - GitHub Issues: [edespino/cbtoolbox/issues](https://github.com/edespino/cbtoolbox/issues)
-

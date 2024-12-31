@@ -31,6 +31,7 @@
 package cmd
 
 import (
+	"github.com/edespino/cbtoolbox/cmd/coreinfo"
         "github.com/edespino/cbtoolbox/cmd/sysinfo"
         "github.com/spf13/cobra"
 )
@@ -47,8 +48,11 @@ var rootCmd = &cobra.Command{
 // init registers all subcommands with the root command.
 // Currently registered commands:
 //   - sysinfo: Displays system and database environment information
+//   - coreinfo: Analyzes core dump files for diagnostic purposes
 func init() {
         rootCmd.AddCommand(sysinfo.Cmd)
+	rootCmd.AddCommand(coreinfo.CoreinfoCmd)
+
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

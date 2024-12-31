@@ -25,11 +25,13 @@
 //
 // Available commands:
 //   - sysinfo: Display system and database environment information
+//   - coreinfo: Analyze core dump files for diagnostic purposes
 //   - help: Display help information about available commands
 //
 // For detailed command usage, run:
 //
 //	cbtoolbox help [command]
+
 package main
 
 import (
