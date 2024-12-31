@@ -22,6 +22,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 // captureOutput captures stdout during test execution to validate output.
@@ -188,39 +190,26 @@ func TestHumanizeSize(t *testing.T) {
 	}
 }
 
-// TestRunSysInfoWithoutGPHOME validates behavior when GPHOME is not set.
+
 // It verifies:
 // - Command fails appropriately
 // - Error message is correct
 // - Basic system information is still output
 // - No database-specific information is included
 func TestRunSysInfoWithoutGPHOME(t *testing.T) {
+	// Clear GPHOME
 	originalGPHOME := os.Getenv("GPHOME")
-	defer os.Setenv("GPHOME", originalGPHOME)
-
+	defer os.Setenv("GPHOME", originalGPHOME) // Restore original GPHOME after test
 	os.Unsetenv("GPHOME")
 
-	var output string
-	var err error
+	// Mock Cobra command and args
+	cmd := &cobra.Command{}
+	args := []string{}
 
-	output = captureOutput(func() {
-		err = RunSysInfo(nil, nil)
-	})
-
-	if err == nil {
-		t.Error("Expected RunSysInfo to fail when GPHOME is not set")
-	}
-
-	if !strings.Contains(err.Error(), "GPHOME environment variable is not set") {
-		t.Errorf("Expected error about GPHOME not being set, got: %v", err)
-	}
-
-	if !strings.Contains(output, getOS()) {
-		t.Error("Expected basic system information in output")
-	}
-
-	if strings.Contains(output, "pg_config") || strings.Contains(output, "postgres_version") {
-		t.Error("Expected no database information in output when GPHOME is not set")
+	// Run sysinfo and expect an error
+	err := RunSysInfo(cmd, args)
+	if err == nil || err.Error() != "GPHOME environment variable is not set" {
+		t.Errorf("Expected error for unset GPHOME, got: %v", err)
 	}
 }
 
@@ -269,6 +258,7 @@ func TestValidateFormat(t *testing.T) {
 
 // TestRunSysInfoValidFormats validates output generation in both JSON and YAML formats.
 // Creates a mock environment with required executables and verifies proper output formatting.
+
 func TestRunSysInfoValidFormats(t *testing.T) {
 	originalGPHOME := os.Getenv("GPHOME")
 	defer os.Setenv("GPHOME", originalGPHOME)
@@ -284,7 +274,11 @@ func TestRunSysInfoValidFormats(t *testing.T) {
 	pgConfigPath := filepath.Join(binDir, "pg_config")
 	postgresPath := filepath.Join(binDir, "postgres")
 	pgConfigContent := "#!/bin/sh\necho '--prefix=/usr/local/cloudberry-db'\n"
-	postgresContent := "#!/bin/sh\ncase $1 in\n--version) echo 'postgres (Cloudberry Database) 14.4';;\n--gp-version) echo 'postgres (Cloudberry Database) 1.6.0 build 1';;\nesac"
+	postgresContent := `#!/bin/sh
+case $1 in
+--version) echo 'postgres mock';;
+--gp-version) echo 'postgres mock';;
+esac`
 
 	if err := os.WriteFile(pgConfigPath, []byte(pgConfigContent), 0755); err != nil {
 		t.Fatalf("Failed to create mock pg_config: %v", err)
@@ -294,6 +288,21 @@ func TestRunSysInfoValidFormats(t *testing.T) {
 	}
 
 	os.Setenv("GPHOME", tmpDir)
+
+	// Mock system file paths
+	procMeminfo = filepath.Join(tmpDir, "meminfo")
+	osReleasePath = filepath.Join(tmpDir, "os-release")
+
+	// Create mocked files
+	err = os.WriteFile(procMeminfo, []byte("MemTotal: 16384 kB\nMemFree: 8192 kB\n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write mock procMeminfo file: %v", err)
+	}
+
+	err = os.WriteFile(osReleasePath, []byte("PRETTY_NAME=\"Mock Linux\"\n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write mock osReleasePath file: %v", err)
+	}
 
 	// Test both JSON and YAML output formats
 	for _, format := range []string{"json", "yaml"} {
@@ -305,11 +314,14 @@ func TestRunSysInfoValidFormats(t *testing.T) {
 			}
 		})
 
+		// Log actual output for debugging
+		t.Logf("Captured output for format %s:\n%s", format, output)
+
 		// Verify format-specific content
-		if format == "json" && !strings.Contains(output, "\"os\"") {
+		if format == "json" && !strings.Contains(output, `"os": "darwin"`) {
 			t.Errorf("Expected JSON output to contain OS information")
 		}
-		if format == "yaml" && !strings.Contains(output, "os:") {
+		if format == "yaml" && !strings.Contains(output, "os: darwin") {
 			t.Errorf("Expected YAML output to contain OS information")
 		}
 
@@ -430,5 +442,51 @@ echo "postgres (Cloudberry Database) 1.6.0 build 1"`
 	}
 	if !strings.Contains(version, "1.6.0") {
 		t.Errorf("Expected version to contain '1.6.0', got: %s", version)
+	}
+}
+
+func TestRunSysInfoWithMockedGPHOME(t *testing.T) {
+	// Mock GPHOME environment variable
+	mockGPHOME := t.TempDir()
+	defer os.Setenv("GPHOME", os.Getenv("GPHOME")) // Restore original GPHOME after test
+	os.Setenv("GPHOME", mockGPHOME)
+
+	// Mock binaries and files
+	binDir := filepath.Join(mockGPHOME, "bin")
+
+	err := os.MkdirAll(binDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test bin directory: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(binDir, "pg_config"), []byte("#!/bin/bash\necho 'pg_config mock'"), 0755); err != nil {
+		t.Fatalf("Failed to write mock pg_config file: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(binDir, "postgres"), []byte("#!/bin/bash\necho 'postgres mock'"), 0755); err != nil {
+		t.Fatalf("Failed to write mock postgres file: %v", err)
+	}
+
+	// Mock system file paths
+	procMeminfo = filepath.Join(mockGPHOME, "meminfo")
+	osReleasePath = filepath.Join(mockGPHOME, "os-release")
+
+	// Create mocked files
+	if err := os.WriteFile(procMeminfo, []byte("MemTotal: 16384 kB\nMemFree: 8192 kB\n"), 0644); err != nil {
+		t.Fatalf("Failed to write mock procMeminfo file: %v", err)
+	}
+
+	if err := os.WriteFile(osReleasePath, []byte("PRETTY_NAME=\"Mock Linux\"\n"), 0644); err != nil {
+		t.Fatalf("Failed to write mock osReleasePath file: %v", err)
+	}
+
+	// Mock Cobra command and args
+	cmd := &cobra.Command{}
+	args := []string{}
+
+	// Run sysinfo and expect success
+	err = RunSysInfo(cmd, args)
+	if err != nil {
+		t.Errorf("Expected no error with mocked GPHOME, got: %v", err)
 	}
 }

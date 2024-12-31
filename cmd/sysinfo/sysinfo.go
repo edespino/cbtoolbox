@@ -10,17 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package sysinfo implements system information gathering
-// functionality for Apache Cloudberry environments. It provides
-// detailed information about the system configuration and database
-// installation.
+// Package sysinfo implements functionality to gather and display detailed
+// system and database environment information for Apache Cloudberry installations.
 //
-// The package requires the GPHOME environment variable to be properly set
-// to gather database-specific information. When GPHOME is not set, it will
-// still provide system-level information while indicating the database
-// configuration is unavailable.
+// This package requires the GPHOME environment variable to be set for database-specific
+// information. If GPHOME is not set, it provides only system-level details.
 //
-// Output formats supported:
+// Supported output formats:
 //   - YAML (default)
 //   - JSON
 //
@@ -28,7 +24,6 @@
 //
 //	import "github.com/edespino/cbtoolbox/cmd/sysinfo"
 //
-//	// Initialize and execute sysinfo command
 //	cmd := sysinfo.Cmd
 //	err := cmd.Execute()
 package sysinfo
@@ -55,6 +50,7 @@ var (
 
 	// procMeminfo specifies the path to system memory information
 	procMeminfo = "/proc/meminfo"
+	osReleasePath = "/etc/os-release"
 )
 
 // Cmd represents the sysinfo command that gathers and displays
@@ -70,38 +66,17 @@ Requires GPHOME environment variable to be set for database-specific information
 // SysInfo represents the complete system and database environment
 // information collected by the sysinfo command.
 type SysInfo struct {
-	// OS represents the operating system name
-	OS string `json:"os" yaml:"os"`
-
-	// Architecture represents the system's CPU architecture
-	Architecture string `json:"architecture" yaml:"architecture"`
-
-	// Hostname is the system's network name
-	Hostname string `json:"hostname" yaml:"hostname"`
-
-	// Kernel represents the Linux kernel version
-	Kernel string `json:"kernel" yaml:"kernel"`
-
-	// OSVersion contains detailed operating system version information
-	OSVersion string `json:"os_version" yaml:"os_version"`
-
-	// CPUs represents the number of CPU cores available
-	CPUs int `json:"cpus" yaml:"cpus"`
-
-	// MemoryStats contains memory-related statistics in human-readable format
-	MemoryStats map[string]string `json:"memory_stats" yaml:"memory_stats"`
-
-	// GPHOME is the Apache Cloudberry installation directory
-	GPHOME string `json:"GPHOME,omitempty" yaml:"GPHOME,omitempty"`
-
-	// PGConfigConfigure contains PostgreSQL build configuration options
-	PGConfigConfigure []string `json:"pg_config_configure,omitempty" yaml:"pg_config_configure,omitempty"`
-
-	// PostgresVersion contains the PostgreSQL server version string
-	PostgresVersion string `json:"postgres_version,omitempty" yaml:"postgres_version,omitempty"`
-
-	// GPVersion contains the Apache Cloudberry version string
-	GPVersion string `json:"gp_version,omitempty" yaml:"gp_version,omitempty"`
+	OS                 string            `json:"os" yaml:"os"`
+	Architecture       string            `json:"architecture" yaml:"architecture"`
+	Hostname           string            `json:"hostname" yaml:"hostname"`
+	Kernel             string            `json:"kernel" yaml:"kernel"`
+	OSVersion          string            `json:"os_version" yaml:"os_version"`
+	CPUs               int               `json:"cpus" yaml:"cpus"`
+	MemoryStats        map[string]string `json:"memory_stats" yaml:"memory_stats"`
+	GPHOME             string            `json:"GPHOME,omitempty" yaml:"GPHOME,omitempty"`
+	PGConfigConfigure  []string          `json:"pg_config_configure,omitempty" yaml:"pg_config_configure,omitempty"`
+	PostgresVersion    string            `json:"postgres_version,omitempty" yaml:"postgres_version,omitempty"`
+	GPVersion          string            `json:"gp_version,omitempty" yaml:"gp_version,omitempty"`
 }
 
 // init initializes the sysinfo command configuration.
@@ -122,6 +97,9 @@ func validateFormat(format string) error {
 		return fmt.Errorf("invalid format: %s (supported formats: yaml, json)", format)
 	}
 }
+
+// readFile abstracts file reading logic, making it mockable during tests.
+var readFile = os.ReadFile
 
 // getOS returns the operating system name using runtime information.
 // This function provides a consistent way to determine the OS across different platforms.
@@ -159,17 +137,18 @@ func getKernelVersion() (string, error) {
 // Extracts the PRETTY_NAME field from the file.
 // Returns "unknown" if the PRETTY_NAME field is not found.
 func getOSVersion() (string, error) {
-	output, err := os.ReadFile("/etc/os-release")
+	content, err := readFile(osReleasePath)
 	if err != nil {
 		return "", fmt.Errorf("os-release: failed to read file: %w", err)
 	}
-	lines := strings.Split(string(output), "\n")
+
+	lines := strings.Split(string(content), "\n")
 	for _, line := range lines {
 		if strings.HasPrefix(line, "PRETTY_NAME=") {
-			return strings.Trim(strings.Split(line, "=")[1], `"`), nil
+			return strings.Trim(line[len("PRETTY_NAME="):], `"`), nil
 		}
 	}
-	return "unknown", nil
+	return "", fmt.Errorf("os-release: PRETTY_NAME not found")
 }
 
 // getCPUCount returns the number of CPU cores available to the system
