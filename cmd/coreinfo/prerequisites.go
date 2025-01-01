@@ -34,7 +34,6 @@ func isCoreFile(filePath string) (bool, error) {
 		fmt.Printf("Debug: 'file' command failed for '%s': %v\n", filePath, err)
 		return false, err
 	}
-	fmt.Printf("Debug: 'file' output for '%s': %s\n", filePath, string(output))
 	return strings.Contains(string(output), "core file") || strings.Contains(string(output), "ELF"), nil
 }
 
@@ -56,7 +55,6 @@ func validateCoreFiles(args []string) ([]string, error) {
 			files, _ := filepath.Glob(filepath.Join(arg, "*"))
 			for _, file := range files {
 				if valid, _ := isCoreFile(file); valid {
-					fmt.Printf("Debug: File '%s' recognized as a valid core file\n", file)
 					coreFiles = append(coreFiles, file)
 				} else {
 					fmt.Printf("Debug: File '%s' NOT recognized as a core file\n", file)
@@ -64,7 +62,6 @@ func validateCoreFiles(args []string) ([]string, error) {
 			}
 		} else {
 			if valid, _ := isCoreFile(arg); valid {
-				fmt.Printf("Debug: File '%s' recognized as a valid core file\n", arg)
 				coreFiles = append(coreFiles, arg)
 			} else {
 				fmt.Printf("Debug: File '%s' NOT recognized as a core file\n", arg)
