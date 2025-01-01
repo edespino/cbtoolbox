@@ -160,7 +160,9 @@ func captureOutput(f func()) string {
 
 	w.Close()
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	if _, err := io.Copy(&buf, r); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to capture output: %v\n", err)
+	}
 	os.Stdout = stdOut
 
 	return buf.String()

@@ -53,8 +53,8 @@ func RunCoreInfo(cmd *cobra.Command, args []string) error {
 	// Placeholder: Print core file paths (replace with actual logic later)
 	fmt.Printf("Validated core files: %v\n", coreFiles)
 
-	// Run GDB analysis
-	if err := RunGDBAnalysis(coreFiles, customGDBFile); err != nil {
+	// Run GDB analysis with a summary
+	if err := RunGDBAnalysisWithSummary(coreFiles, customGDBFile); err != nil {
 		return fmt.Errorf("gdb analysis failed: %v", err)
 	}
 
