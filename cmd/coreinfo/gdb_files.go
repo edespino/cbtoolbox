@@ -23,3 +23,24 @@ func extractGDBFile(filename string, outputPath string) error {
 	fmt.Printf("File %s extracted to %s\n", filename, outputPath)
 	return nil
 }
+
+func extractEmbeddedFile(filename string) (string, error) {
+    // Open the embedded file
+    fileContent, err := gdbFiles.ReadFile("resources/" + filename)
+    if err != nil {
+	return "", fmt.Errorf("failed to read embedded file %s: %v", filename, err)
+    }
+
+    // Write to a temporary file
+    tmpFile, err := os.CreateTemp("", filename+"_*.txt")
+    if err != nil {
+	return "", fmt.Errorf("failed to create temporary file for %s: %v", filename, err)
+    }
+
+    if _, err := tmpFile.Write(fileContent); err != nil {
+	return "", fmt.Errorf("failed to write content to temporary file: %v", err)
+    }
+
+    tmpFile.Close()
+    return tmpFile.Name(), nil
+}
