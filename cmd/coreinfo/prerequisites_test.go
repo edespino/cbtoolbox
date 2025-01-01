@@ -136,6 +136,8 @@ func TestCoreInfoVerboseOutput(t *testing.T) {
 		}
 	})
 
+	fmt.Printf("Captured GDB Output:\n%s\n", output)
+
 	// Validate verbose output
 	if !strings.Contains(output, fmt.Sprintf("Validating file: %s -> Valid core file", coreFile1)) {
 		t.Errorf("Expected verbose output for coreFile1, got:\n%s", output)
