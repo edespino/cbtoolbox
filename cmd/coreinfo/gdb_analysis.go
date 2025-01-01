@@ -31,10 +31,15 @@ func RunGDBAnalysis(coreFiles []string, gdbFile string) error {
 
 	for _, coreFile := range coreFiles {
 		fmt.Printf("Analyzing core file: %s using %s\n", coreFile, gdbFile)
-		gdbCmd := exec.Command("gdb", "-x", gdbFile, "/usr/local/cloudberry-db/bin/postgres", coreFile)
+
+		// Construct the GDB command with the --quiet option
+		gdbCmd := exec.Command("gdb", "--quiet", "-x", gdbFile, "/usr/local/cloudberry-db/bin/postgres", coreFile)
+
+		// Redirect GDB output to the standard output and error streams
 		gdbCmd.Stdout = os.Stdout
 		gdbCmd.Stderr = os.Stderr
 
+		// Execute the GDB command and handle errors
 		if err := gdbCmd.Run(); err != nil {
 			return fmt.Errorf("failed to run GDB on %s: %v", coreFile, err)
 		}
