@@ -6,10 +6,27 @@ import (
 	"os/exec"
 )
 
-// RunGDBAnalysis executes the GDB analysis on the provided core files using the specified GDB command file.
+// RunGDBAnalysis uses the embedded GDB command files for analysis.
 func RunGDBAnalysis(coreFiles []string, gdbFile string) error {
 	if gdbFile == "" {
-		gdbFile = "gdb_commands_basic.txt" // Default to basic analysis
+		// Use embedded basic GDB commands by default
+		gdbFile = "gdb_commands_basic.txt"
+		tempFile, err := os.CreateTemp("", gdbFile)
+		if err != nil {
+			return fmt.Errorf("failed to create temp file for GDB commands: %v", err)
+		}
+		defer tempFile.Close()
+		defer os.Remove(tempFile.Name()) // Clean up after use
+
+		// Write the embedded file to the temporary location
+		data, err := gdbFiles.ReadFile("resources/" + gdbFile)
+		if err != nil {
+			return fmt.Errorf("failed to read embedded GDB commands: %v", err)
+		}
+		if _, err := tempFile.Write(data); err != nil {
+			return fmt.Errorf("failed to write GDB commands to temp file: %v", err)
+		}
+		gdbFile = tempFile.Name() // Update to the temp file path
 	}
 
 	for _, coreFile := range coreFiles {
@@ -19,7 +36,7 @@ func RunGDBAnalysis(coreFiles []string, gdbFile string) error {
 		gdbCmd.Stderr = os.Stderr
 
 		if err := gdbCmd.Run(); err != nil {
-			return fmt.Errorf("failed to run gdb on %s: %v", coreFile, err)
+			return fmt.Errorf("failed to run GDB on %s: %v", coreFile, err)
 		}
 	}
 
