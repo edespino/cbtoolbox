@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -109,28 +110,49 @@ func TestCoreInfoVerboseOutput(t *testing.T) {
 		return nil
 	}
 
-	tempDir := t.TempDir()
-
-	// Create mock core files with ELF magic number
-	coreFile1 := filepath.Join(tempDir, "core.1234")
-	coreFile2 := filepath.Join(tempDir, "core")
-
-	elfMagic := []byte("\x7fELF") // ELF magic number
-
-	err := os.WriteFile(coreFile1, elfMagic, 0644)
-	if err != nil {
-		t.Fatalf("Failed to write mock core file1: %v", err)
+	// Check if gdb is available in PATH
+	if _, err := exec.LookPath("gdb"); err != nil {
+		t.Skip("gdb not found in PATH, skipping test on macOS")
 	}
 
-	err = os.WriteFile(coreFile2, elfMagic, 0644)
-	if err != nil {
-		t.Fatalf("Failed to write mock core file2: %v", err)
+	// Attempt to find a real core file in /var/crash
+	corePattern := "/var/crash/core-crash-*"
+	matches, err := filepath.Glob(corePattern)
+	var coreFiles []string
+
+	if err == nil && len(matches) > 0 {
+		// Use the real core files found
+		t.Logf("Using real core file(s) for test: %v", matches)
+		coreFiles = matches
+	} else {
+		// Fall back to creating mock core files
+		t.Log("No real core files found, falling back to mock core files.")
+
+		tempDir := t.TempDir()
+
+		// Create mock core files with ELF magic number
+		coreFile1 := filepath.Join(tempDir, "core.1234")
+		coreFile2 := filepath.Join(tempDir, "core")
+
+		elfMagic := []byte("\x7fELF") // ELF magic number
+
+		err := os.WriteFile(coreFile1, elfMagic, 0644)
+		if err != nil {
+			t.Fatalf("Failed to write mock core file1: %v", err)
+		}
+
+		err = os.WriteFile(coreFile2, elfMagic, 0644)
+		if err != nil {
+			t.Fatalf("Failed to write mock core file2: %v", err)
+		}
+
+		coreFiles = []string{coreFile1, coreFile2}
 	}
 
 	// Capture verbose output
 	verbose = true
 	output := captureOutput(func() {
-		err := RunCoreInfo(nil, []string{tempDir})
+		err := RunCoreInfo(nil, coreFiles)
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -139,17 +161,22 @@ func TestCoreInfoVerboseOutput(t *testing.T) {
 	fmt.Printf("Captured GDB Output:\n%s\n", output)
 
 	// Validate verbose output
-	if !strings.Contains(output, fmt.Sprintf("Validating file: %s -> Valid core file", coreFile1)) {
-		t.Errorf("Expected verbose output for coreFile1, got:\n%s", output)
-	}
-	if !strings.Contains(output, fmt.Sprintf("Validating file: %s -> Valid core file", coreFile2)) {
-		t.Errorf("Expected verbose output for coreFile2, got:\n%s", output)
+	for _, coreFile := range coreFiles {
+		if !strings.Contains(output, fmt.Sprintf("Validating file: %s -> Valid core file", coreFile)) {
+			t.Errorf("Expected verbose output for coreFile %s, got:\n%s", coreFile, output)
+		}
 	}
 
 	// Validate summary output
-	if !strings.Contains(output, fmt.Sprintf("Validated core files: [%s %s]", coreFile1, coreFile2)) &&
-		!strings.Contains(output, fmt.Sprintf("Validated core files: [%s %s]", coreFile2, coreFile1)) {
-		t.Errorf("Expected summary output to contain core files in any order, got:\n%s", output)
+	if len(coreFiles) > 1 {
+		if !strings.Contains(output, fmt.Sprintf("Validated core files: [%s %s]", coreFiles[0], coreFiles[1])) &&
+			!strings.Contains(output, fmt.Sprintf("Validated core files: [%s %s]", coreFiles[1], coreFiles[0])) {
+			t.Errorf("Expected summary output to contain core files in any order, got:\n%s", output)
+		}
+	} else if len(coreFiles) == 1 {
+		if !strings.Contains(output, fmt.Sprintf("Validated core files: [%s]", coreFiles[0])) {
+			t.Errorf("Expected summary output to contain single core file, got:\n%s", output)
+		}
 	}
 }
 
