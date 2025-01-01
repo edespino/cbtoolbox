@@ -1,0 +1,40 @@
+set pagination off
+set print pretty on
+set print object on
+set print elements 0
+set logging on gdb_basic.log
+
+echo \n\n=== Basic Crash Information ===\n\n
+echo Current thread information:
+info threads
+
+echo \n\n=== Thread Backtraces ===\n\n
+thread apply all bt full
+
+echo \n\n=== Register State ===\n\n
+info registers all
+
+echo \n\n=== Signal Information ===\n\n
+print $_siginfo
+print $_siginfo._sifields._sigfault
+
+echo \n\n=== Current Instruction ===\n\n
+x/1i $pc
+
+echo \n\n=== Memory Mappings ===\n\n
+info proc mappings
+
+echo \n\n=== Frame Information ===\n\n
+info frame
+
+echo \n\n=== Shared Libraries ===\n\n
+info sharedlibrary
+
+echo \n\n=== Thread Instructions ===\n\n
+thread apply all x/1i $pc
+
+echo \n\n=== Binary Sections ===\n\n
+maintenance info sections
+
+set logging off
+quit
