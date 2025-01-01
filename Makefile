@@ -1,18 +1,26 @@
 # Project settings
-BINARY_NAME = cbtoolbox
 BUILD_DIR = build
+EXECUTABLE := $(BUILD_DIR)/cbtoolbox
+SOURCES := $(shell go list -f '{{range .GoFiles}}{{$$.Dir}}/{{.}} {{end}}' ./... | tr '\n' ' ')
+EMBEDDED_FILES := cmd/coreinfo/resources/gdb_commands_basic.txt cmd/coreinfo/resources/gdb_commands_detailed.txt
+
 
 # Go settings
 GO = go
 GO_TEST_FLAGS = -v
 GO_LINT_TOOL = golangci-lint
 
+.PHONY: build
+
 # Default target
 all: build
 
 # Build the project
-build:
-	$(GO) build -o $(BUILD_DIR)/$(BINARY_NAME) main.go
+build: $(EXECUTABLE)
+
+$(EXECUTABLE): $(SOURCES) $(EMBEDDED_FILES)
+	mkdir -p $(BUILD_DIR)
+	go build -o $(EXECUTABLE) main.go
 
 # Run all tests
 test:
@@ -30,6 +38,7 @@ lint:
 	}
 	$(GO_LINT_TOOL) run
 
+.PHONY: clean
 # Clean up build artifacts
 clean:
 	rm -rf $(BUILD_DIR)
