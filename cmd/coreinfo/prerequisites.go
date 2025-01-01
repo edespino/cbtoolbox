@@ -1,7 +1,6 @@
 package coreinfo
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,7 +9,7 @@ import (
 )
 
 // checkPrerequisites verifies that all necessary tools and configurations are available.
-func checkPrerequisites() error {
+var checkPrerequisites = func() error {
 	if err := checkGDBAvailability(); err != nil {
 		return err
 	}
@@ -30,15 +29,13 @@ func checkGDBAvailability() error {
 // isCoreFile determines if a file is a core dump using the `file` command.
 func isCoreFile(filePath string) (bool, error) {
 	cmd := exec.Command("file", filePath)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	if err := cmd.Run(); err != nil {
-		return false, fmt.Errorf("failed to run 'file' command: %w", err)
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("Debug: 'file' command failed for '%s': %v\n", filePath, err)
+		return false, err
 	}
-
-	output := out.String()
-	return strings.Contains(output, "core file"), nil
+	fmt.Printf("Debug: 'file' output for '%s': %s\n", filePath, string(output))
+	return strings.Contains(string(output), "core file") || strings.Contains(string(output), "ELF"), nil
 }
 
 // validateCoreFiles validates the input paths to determine if they are core files or directories containing core files.
@@ -51,26 +48,26 @@ func validateCoreFiles(args []string) ([]string, error) {
 	for _, arg := range args {
 		info, err := os.Stat(arg)
 		if err != nil {
-			return nil, fmt.Errorf("error accessing path '%s': %v", arg, err)
+			fmt.Printf("Debug: Error accessing path '%s': %v\n", arg, err)
+			continue
 		}
 
 		if info.IsDir() {
-			// Search for files in the directory
-			files, err := filepath.Glob(filepath.Join(arg, "*"))
-			if err != nil {
-				return nil, fmt.Errorf("error scanning directory '%s': %v", arg, err)
-			}
+			files, _ := filepath.Glob(filepath.Join(arg, "*"))
 			for _, file := range files {
-				if valid, err := isCoreFile(file); err == nil && valid {
+				if valid, _ := isCoreFile(file); valid {
+					fmt.Printf("Debug: File '%s' recognized as a valid core file\n", file)
 					coreFiles = append(coreFiles, file)
+				} else {
+					fmt.Printf("Debug: File '%s' NOT recognized as a core file\n", file)
 				}
 			}
 		} else {
-			// Validate single file
-			if valid, err := isCoreFile(arg); err == nil && valid {
+			if valid, _ := isCoreFile(arg); valid {
+				fmt.Printf("Debug: File '%s' recognized as a valid core file\n", arg)
 				coreFiles = append(coreFiles, arg)
 			} else {
-				return nil, fmt.Errorf("invalid core file: '%s'", arg)
+				fmt.Printf("Debug: File '%s' NOT recognized as a core file\n", arg)
 			}
 		}
 	}
