@@ -10,24 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// root_test.go
 package cmd
 
 import (
+	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
 )
 
-// TestExecute validates that the Execute function successfully runs
-// a basic command implementation. It temporarily replaces the root
-// command with a test command that always succeeds, then verifies
-// the command executes without error.
 func TestExecute(t *testing.T) {
-	// Store original command and restore after test
 	originalCmd := rootCmd
 	defer func() { rootCmd = originalCmd }()
 
-	// Create a test command that always succeeds
 	rootCmd = &cobra.Command{
 		Use:   "test",
 		Short: "Test command",
@@ -41,15 +37,80 @@ func TestExecute(t *testing.T) {
 	}
 }
 
-// TestRootCommandHelp validates the behavior of the root command when
-// executed without subcommands. It verifies that the command returns
-// an appropriate error message for unknown commands while still displaying
-// the help information.
 func TestRootCommandHelp(t *testing.T) {
 	if err := rootCmd.Execute(); err != nil {
-		// The root command without subcommands will return an "unknown command" error
 		if err.Error() != "unknown command" {
 			t.Errorf("Unexpected error executing root command: %v", err)
 		}
+	}
+}
+
+func TestGPHOMEValidation(t *testing.T) {
+	originalGPHOME := os.Getenv("GPHOME")
+	defer os.Setenv("GPHOME", originalGPHOME)
+
+	tests := []struct {
+		name        string
+		gphomePath  string
+		createDir   bool
+		shouldError bool
+	}{
+		{
+			name:        "GPHOME not set",
+			gphomePath:  "",
+			createDir:   false,
+			shouldError: true,
+		},
+		{
+			name:        "GPHOME set to non-existent directory",
+			gphomePath:  "/nonexistent/path",
+			createDir:   false,
+			shouldError: true,
+		},
+		{
+			name:        "GPHOME set to valid directory",
+			gphomePath:  t.TempDir(),
+			createDir:   true,
+			shouldError: false,
+		},
+	}
+
+	testCmd := &cobra.Command{
+		Use: "test",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return nil
+		},
+	}
+	rootCmd.AddCommand(testCmd)
+	defer rootCmd.RemoveCommand(testCmd)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.gphomePath == "" {
+				os.Unsetenv("GPHOME")
+			} else {
+				os.Setenv("GPHOME", tt.gphomePath)
+			}
+
+			err := rootCmd.PersistentPreRunE(testCmd, []string{})
+
+			if (err != nil) != tt.shouldError {
+				t.Errorf("PersistentPreRunE() error = %v, shouldError = %v", err, tt.shouldError)
+			}
+		})
+	}
+}
+
+func TestGPHOMESkipForHelp(t *testing.T) {
+	originalGPHOME := os.Getenv("GPHOME")
+	os.Unsetenv("GPHOME")
+	defer os.Setenv("GPHOME", originalGPHOME)
+
+	helpCmd := &cobra.Command{
+		Use: "help",
+	}
+
+	if err := rootCmd.PersistentPreRunE(helpCmd, []string{}); err != nil {
+		t.Errorf("PersistentPreRunE() should not check GPHOME for help command, got error: %v", err)
 	}
 }

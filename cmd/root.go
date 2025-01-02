@@ -28,36 +28,54 @@
 //	        // Handle error
 //	    }
 //	}
+// root.go
+
 package cmd
 
 import (
-	"github.com/edespino/cbtoolbox/cmd/coreinfo"
+        "fmt"
+        "os"
+
+        "github.com/edespino/cbtoolbox/cmd/coreinfo"
         "github.com/edespino/cbtoolbox/cmd/sysinfo"
         "github.com/spf13/cobra"
 )
 
-// rootCmd represents the base command when called without any subcommands.
-// This command provides a help message and serves as the entry point for
-// executing subcommands within the `cbtoolbox` CLI.
 var rootCmd = &cobra.Command{
         Use:   "cbtoolbox",
         Short: "An Apache Cloudberry (Incubator) toolbox",
         Long:  "An Apache Cloudberry (Incubator) toolbox",
+        PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+                // Skip GPHOME check for help and version commands
+                if cmd.Name() == "help" || cmd.Name() == "version" {
+                        return nil
+                }
+
+                // Skip check if this is the root command being executed without subcommands
+                if cmd.Name() == "cbtoolbox" {
+                        return nil
+                }
+
+                // Check GPHOME environment variable
+                gphome := os.Getenv("GPHOME")
+                if gphome == "" {
+                        return fmt.Errorf("GPHOME environment variable is not set")
+                }
+
+                // Verify GPHOME points to a valid directory
+                if _, err := os.Stat(gphome); os.IsNotExist(err) {
+                        return fmt.Errorf("GPHOME directory does not exist: %s", gphome)
+                }
+
+                return nil
+        },
 }
 
-// init registers all subcommands with the root command.
-// Currently registered commands:
-//   - sysinfo: Displays system and database environment information
-//   - coreinfo: Analyzes core dump files for diagnostic purposes
 func init() {
         rootCmd.AddCommand(sysinfo.Cmd)
-	rootCmd.AddCommand(coreinfo.CoreinfoCmd)
-
+        rootCmd.AddCommand(coreinfo.CoreinfoCmd)
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-// Returns an error if command execution fails.
 func Execute() error {
         return rootCmd.Execute()
 }
