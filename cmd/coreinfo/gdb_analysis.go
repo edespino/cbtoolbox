@@ -67,8 +67,7 @@ func RunGDBAnalysisWithSummary(coreFiles []string, fileInfos map[string]*FileInf
 		}
 
 		// Extract and print summary
-		summary, err := extractCoreSummary(string(output), fileInfos[coreFile])
-
+		summary, err := extractCoreSummary(string(output), fileInfos[coreFile], coreFile)
 		if err != nil {
 			return fmt.Errorf("failed to extract core summary for %s: %v", coreFile, err)
 		}
@@ -144,6 +143,7 @@ func extractCoreSummary(gdbOutput string, fileInfo *FileInfo) (string, error) {
 Apache Cloudberry Core Dump Analysis Summary
 ======================================================================
 
+- Core File: %s
 - Binary: %s
 - Platform: %s
 - User/Group: %s
@@ -152,6 +152,7 @@ Apache Cloudberry Core Dump Analysis Summary
 - Faulting Address: %s
 - Thread ID: %s
 - Process Args: %s`,
+		coreFile,
 		binary,
 		platform,
 		userInfo,
