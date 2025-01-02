@@ -11,11 +11,7 @@ import (
 // checkPrerequisites verifies that all necessary tools and configurations are available.
 var checkPrerequisites = func() error {
 	if err := checkGDBAvailability(); err != nil {
-		return err
-	}
-
-	if _, err := getPostgresPath(); err != nil {
-		return err
+		return fmt.Errorf("gdb not found: please install GDB using your system package manager (e.g. 'yum install gdb' or 'apt-get install gdb')")
 	}
 
 	// Add more prerequisite checks here if needed
@@ -60,7 +56,7 @@ func validateAndAddCoreFile(file string, coreFiles *[]string) error {
 // validateCoreFiles validates the input paths to determine if they are core files or directories containing core files.
 func validateCoreFiles(args []string) ([]string, error) {
 	if len(args) == 0 {
-		return nil, fmt.Errorf("no core files or directories provided")
+		return nil, fmt.Errorf("no core files specified: usage 'cbtoolbox coreinfo <path-to-core-file>' or 'cbtoolbox coreinfo <directory-with-cores>'")
 	}
 
 	var coreFiles []string

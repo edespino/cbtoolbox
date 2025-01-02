@@ -17,9 +17,8 @@ func getPostgresPath() (string, error) {
 
 	postgresPath := filepath.Join(gphome, "bin", "postgres")
 	if _, err := os.Stat(postgresPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("postgres binary not found at %s", postgresPath)
+		return "", fmt.Errorf("postgres binary not found: please ensure GPHOME is set and points to a valid Apache Cloudberry installation. Current GPHOME=%s", os.Getenv("GPHOME"))
 	}
-
 	return postgresPath, nil
 }
 
