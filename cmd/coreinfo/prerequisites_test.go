@@ -93,7 +93,7 @@ func TestValidateCoreFiles(t *testing.T) {
 	}
 
 	// Validate core files
-	files, err := validateCoreFiles([]string{tempDir})
+	files, infos, err := validateCoreFiles([]string{tempDir})
 	if err != nil {
 		t.Errorf("Unexpected error during validation: %v", err)
 	}
@@ -101,6 +101,11 @@ func TestValidateCoreFiles(t *testing.T) {
 	// Check expected results
 	if len(files) != 2 {
 		t.Errorf("Expected 2 core files, got %d", len(files))
+	}
+
+	// Check that we have FileInfo for each core file
+	if len(infos) != len(files) {
+		t.Errorf("Expected FileInfo for each core file, got %d infos for %d files", len(infos), len(files))
 	}
 }
 
@@ -123,7 +128,10 @@ func TestCoreInfoVerboseOutput(t *testing.T) {
 	if err == nil && len(matches) > 0 {
 		// Use the real core files found
 		t.Logf("Using real core file(s) for test: %v", matches)
-		coreFiles = matches
+		coreFiles, _, err = validateCoreFiles(matches)
+		if err != nil {
+			t.Fatalf("Failed to validate real core files: %v", err)
+		}
 	} else {
 		// Fall back to creating mock core files
 		t.Log("No real core files found, falling back to mock core files.")
@@ -146,7 +154,10 @@ func TestCoreInfoVerboseOutput(t *testing.T) {
 			t.Fatalf("Failed to write mock core file2: %v", err)
 		}
 
-		coreFiles = []string{coreFile1, coreFile2}
+		coreFiles, _, err = validateCoreFiles([]string{coreFile1, coreFile2})
+		if err != nil {
+			t.Fatalf("Failed to validate mock core files: %v", err)
+		}
 	}
 
 	// Capture verbose output

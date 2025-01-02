@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -27,26 +28,66 @@ func checkGDBAvailability() error {
 	return nil
 }
 
-// isCoreFile determines if a file is a core dump using the `file` command.
-func isCoreFile(filePath string) (bool, error) {
+// prerequisites.go
+type FileInfo struct {
+	Platform    string
+	RealUID    string
+	EffUID     string
+	RealGID    string
+	EffGID     string
+	ExecPath   string
+}
+
+func isCoreFile(filePath string) (bool, *FileInfo, error) {
 	cmd := exec.Command("file", filePath)
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Printf("Debug: 'file' command failed for '%s': %v\n", filePath, err)
-		return false, err
+		return false, nil, err
 	}
-	return strings.Contains(string(output), "core file") || strings.Contains(string(output), "ELF"), nil
+	outputStr := string(output)
+	isCore := strings.Contains(outputStr, "core file") || strings.Contains(outputStr, "ELF")
+
+	var info *FileInfo
+	if isCore {
+		info = &FileInfo{}
+		// Platform
+		if match := regexp.MustCompile(`platform: '([^']+)'`).FindStringSubmatch(outputStr); len(match) > 1 {
+			info.Platform = match[1]
+		}
+		// UIDs
+		if match := regexp.MustCompile(`real uid: (\d+)`).FindStringSubmatch(outputStr); len(match) > 1 {
+			info.RealUID = match[1]
+		}
+		if match := regexp.MustCompile(`effective uid: (\d+)`).FindStringSubmatch(outputStr); len(match) > 1 {
+			info.EffUID = match[1]
+		}
+		// GIDs
+		if match := regexp.MustCompile(`real gid: (\d+)`).FindStringSubmatch(outputStr); len(match) > 1 {
+			info.RealGID = match[1]
+		}
+		if match := regexp.MustCompile(`effective gid: (\d+)`).FindStringSubmatch(outputStr); len(match) > 1 {
+			info.EffGID = match[1]
+		}
+		// Executable path
+		if match := regexp.MustCompile(`execfn: '([^']+)'`).FindStringSubmatch(outputStr); len(match) > 1 {
+			info.ExecPath = match[1]
+		}
+	}
+
+	return isCore, info, nil
 }
 
 // validateAndAddCoreFile handles the validation of a single potential core file
-// Returns true if the file is a valid core file and was added
-func validateAndAddCoreFile(file string, coreFiles *[]string) error {
-	valid, err := isCoreFile(file)
+// Returns error if validation fails
+func validateAndAddCoreFile(file string, coreFiles *[]string, coreInfos map[string]*FileInfo) error {
+	valid, info, err := isCoreFile(file)
 	if err != nil {
 		return fmt.Errorf("failed to check core file %s: %v", file, err)
 	}
 	if valid {
 		*coreFiles = append(*coreFiles, file)
+		coreInfos[file] = info
 	} else if verbose {
 		fmt.Printf("Debug: File '%s' NOT recognized as a core file\n", file)
 	}
@@ -54,12 +95,14 @@ func validateAndAddCoreFile(file string, coreFiles *[]string) error {
 }
 
 // validateCoreFiles validates the input paths to determine if they are core files or directories containing core files.
-func validateCoreFiles(args []string) ([]string, error) {
+func validateCoreFiles(args []string) ([]string, map[string]*FileInfo, error) {
 	if len(args) == 0 {
-		return nil, fmt.Errorf("no core files specified: usage 'cbtoolbox coreinfo <path-to-core-file>' or 'cbtoolbox coreinfo <directory-with-cores>'")
+		return nil, nil, fmt.Errorf("no core files specified: usage 'cbtoolbox coreinfo <path-to-core-file>' or 'cbtoolbox coreinfo <directory-with-cores>'")
 	}
 
 	var coreFiles []string
+	coreInfos := make(map[string]*FileInfo)
+
 	for _, arg := range args {
 		info, err := os.Stat(arg)
 		if err != nil {
@@ -70,22 +113,22 @@ func validateCoreFiles(args []string) ([]string, error) {
 		if info.IsDir() {
 			files, err := filepath.Glob(filepath.Join(arg, "*"))
 			if err != nil {
-				return nil, fmt.Errorf("failed to read directory %s: %v", arg, err)
+				return nil, nil, fmt.Errorf("failed to read directory %s: %v", arg, err)
 			}
 			for _, file := range files {
-				if err := validateAndAddCoreFile(file, &coreFiles); err != nil {
-					return nil, err
+				if err := validateAndAddCoreFile(file, &coreFiles, coreInfos); err != nil {
+					return nil, nil, err
 				}
 			}
 		} else {
-			if err := validateAndAddCoreFile(arg, &coreFiles); err != nil {
-				return nil, err
+			if err := validateAndAddCoreFile(arg, &coreFiles, coreInfos); err != nil {
+				return nil, nil, err
 			}
 		}
 	}
 
 	if len(coreFiles) == 0 {
-		return nil, fmt.Errorf("no valid core files provided")
+		return nil, nil, fmt.Errorf("no valid core files provided")
 	}
-	return coreFiles, nil
+	return coreFiles, coreInfos, nil
 }
