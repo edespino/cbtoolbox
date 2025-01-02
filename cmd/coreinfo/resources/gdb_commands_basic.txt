@@ -4,36 +4,66 @@ set print object on
 set print elements 0
 set logging on gdb_basic.log
 
-echo \n\n=== Basic Crash Information ===\n\n
+echo \n\n======================================================================\n
+echo === Basic Crash Information\n
+echo ======================================================================\n\n
+
 echo Current thread information:
 info threads
 
-echo \n\n=== Thread Backtraces ===\n\n
+echo \n\n======================================================================\n
+echo === Thread Backtraces\n
+echo ======================================================================\n
+
 thread apply all bt full
 
-echo \n\n=== Register State ===\n\n
+echo \n\n======================================================================\n
+echo === Register State\n
+echo ======================================================================\n\n
+
 info registers all
 
-echo \n\n=== Signal Information ===\n\n
+echo \n\n======================================================================\n
+echo === Signal Information\n
+echo ======================================================================\n\n
+
 print $_siginfo
 print $_siginfo._sifields._sigfault
 
-echo \n\n=== Current Instruction ===\n\n
+echo \n\n======================================================================\n
+echo === Current Instruction\n
+echo ======================================================================\n\n
+
 x/1i $pc
 
-echo \n\n=== Memory Mappings ===\n\n
+echo \n\n======================================================================\n
+echo === Memory Mappings\n
+echo ======================================================================\n\n
+
 info proc mappings
 
-echo \n\n=== Frame Information ===\n\n
+echo \n\n======================================================================\n
+echo === Frame Information\n
+echo ======================================================================\n\n
+
 info frame
 
-echo \n\n=== Shared Libraries ===\n\n
+echo \n\n======================================================================\n
+echo === Shared Libraries\n
+echo ======================================================================\n\n
+
 info sharedlibrary
 
-echo \n\n=== Thread Instructions ===\n\n
+echo \n\n======================================================================\n
+echo === Thread Instructions\n
+echo ======================================================================\n\n
+
 thread apply all x/1i $pc
 
-echo \n\n=== Binary Sections ===\n\n
+echo \n\n======================================================================\n
+echo === Binary Sections\n
+echo ======================================================================\n\n
+
 maintenance info sections
 
 set logging off

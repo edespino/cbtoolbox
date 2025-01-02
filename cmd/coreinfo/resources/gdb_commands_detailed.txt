@@ -6,63 +6,87 @@ set print array on
 set print array-indexes on
 set logging on gdb_detailed.log
 
-echo \n\n=== Basic Crash Information ===\n\n
+echo \n\n======================================================================\n
+echo === Basic Crash Information\n
+echo ======================================================================\n\n
+
 echo Current thread information:
 info threads
 
-echo \n\n=== Thread Backtraces with Local Variables ===\n\n
+echo \n\n======================================================================\n
+echo === Thread Backtraces with Local Variables\n
+echo ======================================================================\n\n
+
 thread apply all bt full
 
-echo \n\n=== Register State ===\n\n
+echo \n\n======================================================================\n
+echo === Register State\n
+echo ======================================================================\n\n
+
 info registers all
 info all-registers
 
-echo \n\n=== Signal Information ===\n\n
+echo \n\n======================================================================\n
+echo === Signal Information\n
+echo ======================================================================\n\n
+
 print $_siginfo
 print $_siginfo._sifields._sigfault
 
-echo \n\n=== Current Instruction Context ===\n\n
+echo \n\n======================================================================\n
+echo === Current Instruction Context\n
+echo ======================================================================\n\n
+
 x/1i $pc
 x/10i $pc-20
 
-echo \n\n=== Memory Mappings ===\n\n
+echo \n\n======================================================================\n
+echo === Memory Mappings\n
+echo ======================================================================\n\n
+
 info proc mappings
 
-echo \n\n=== Frame Analysis ===\n\n
-info frame
-info args
-info locals
-info catch
-frame info
+echo \n\n======================================================================\n
+echo === Shared Libraries\n
+echo ======================================================================\n\n
 
-echo \n\n=== Source Information ===\n\n
+info sharedlibrary
+info dll
+
+echo \n\n======================================================================\n
+echo === Source Information\n
+echo ======================================================================\n\n
+
 info source
 list
 
-echo \n\n=== Function Information ===\n\n
+echo \n\n======================================================================\n
+echo === Function Information\n
+echo ======================================================================\n\n
+
 info functions
 info variables global
 info variables local
 
-echo \n\n=== Shared Libraries ===\n\n
-info sharedlibrary
-info dll
+echo \n\n======================================================================\n
+echo === Thread Details\n
+echo ======================================================================\n\n
 
-echo \n\n=== Stack Analysis ===\n\n
-x/32x $sp
-x/32x $bp
-
-echo \n\n=== Thread Details ===\n\n
 thread apply all thread
 thread apply all info registers
 thread apply all x/1i $pc
 
-echo \n\n=== Binary Information ===\n\n
+echo \n\n======================================================================\n
+echo === Binary Information\n
+echo ======================================================================\n\n
+
 info target
 maintenance info sections
-maintenance check all
 
-echo \n\n=== Symbol Information ===\n\n
+echo \n\n======================================================================\n
+echo === Symbol Information\n
+echo ======================================================================\n\n
+
 info sources
 info functions
 info variables
