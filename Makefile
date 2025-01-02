@@ -4,6 +4,7 @@ EXECUTABLE := $(BUILD_DIR)/cbtoolbox
 SOURCES := $(shell go list -f '{{range .GoFiles}}{{$$.Dir}}/{{.}} {{end}}' ./... | tr '\n' ' ')
 EMBEDDED_FILES := cmd/coreinfo/resources/gdb_commands_basic.txt cmd/coreinfo/resources/gdb_commands_detailed.txt
 
+CRASH_EXECUTABLE := $(BUILD_DIR)/crash
 
 # Go settings
 GO = go
@@ -23,8 +24,20 @@ $(EXECUTABLE): $(SOURCES) $(EMBEDDED_FILES)
 	go build -o $(EXECUTABLE) main.go
 
 # Run all tests
-test:
+test: $(CRASH_EXECUTABLE)
 	$(GO) test $(GO_TEST_FLAGS) ./...
+
+$(CRASH_EXECUTABLE):
+	mkdir -p $(BUILD_DIR)
+	gcc cmd/coreinfo/resources/crash.c -o $(CRASH_EXECUTABLE)
+ifeq ($(shell uname -s), Darwin)
+	ulimit -c
+	ulimit -c unlimited
+	ulimit -a
+	rm -f segv.entitlements
+	/usr/libexec/PlistBuddy -c "Add :com.apple.security.get-task-allow bool true" segv.entitlements
+	codesign -s - -f --entitlements segv.entitlements $(CRASH_EXECUTABLE)
+endif
 
 # Run tests with coverage
 test-cover:
